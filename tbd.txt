@@ -1,0 +1,3 @@
+learn how pdfplumber works
+define coordinates for each lesson
+extract and store info in a class
