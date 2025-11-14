@@ -6,7 +6,7 @@ class Grade:
     def __init__(self, sinf, tur):
         self.sinf = sinf
         self.tur = tur
-        self.target = self.sinf + 1 if self.tur == "green" else self.sinf
+        self.target = (self.sinf - 5)*2 +(0 if self.tur=="blue" else 1)
 
     def __str__(self):
         return f"{self.sinf} {self.tur}"
@@ -42,8 +42,8 @@ class Grade:
 
     @classmethod
     def get(cls):
-        sinf = input("Sinf: ") or 10
-        tur = input("Sinf turi: ") or "Blue"
+        sinf = input("Sinf: ")
+        tur = input("Sinf turi: ")
         return cls(sinf, tur)
 
 
@@ -77,14 +77,99 @@ def main():
                 ):
                     lst.append(val)
 
-        for day in [monday, tuesday, wednesday, thursday, friday]:
-            # print(day)
-            for i in range(1, len(day)):
-                if not day[i]:
-                    continue
-                else:
-                    attributes = normalize_attributes(day[i].split("\n"))
-                    print(i, attributes)
+        days = [monday, tuesday, wednesday, thursday, friday]
+
+        for day_index in range(len(days)):
+            day = days[day_index]
+            day = clean_day(day)
+            day = normalize_day(day)
+            day = merge_day(day)
+            days[day_index] = day
+            for lesson_index, lesson in enumerate(
+                day, start=1
+            ):  # day = {"lesson_info":list(), "double_lesson":bool}
+                print(
+                    lesson_index,
+                    lesson["lesson_info"].split("\n"),
+                    lesson["double_lesson"],
+                )
+            print("---------------------------------")
+
+
+def normalize_day(day):
+    for i in range(len(day)):
+        lesson = day[i]
+        attrs = normalize_attributes(lesson.split("\n"))
+        day[i] = "\n".join(attrs)
+    return day
+
+
+def merge_day(day):
+    merged = []
+    i = 0
+    while i < len(day):
+        current_parts = day[i].split("\n")
+        double = False
+
+        if i + 1 < len(day):
+            next_parts = day[i + 1].split("\n")
+
+            # Merge logic preserving rooms and teachers
+            if len(current_parts) in (1, 2):
+                # Room is always first of current_parts
+                room = current_parts[0]
+
+                # Subject(s): combine current and next
+                subject_middle = (
+                    " ".join(current_parts[1:] + next_parts[:-1])
+                    if len(current_parts) > 1
+                    else next_parts[:-1]
+                )
+                subject = (
+                    " ".join(subject_middle).strip()
+                    if isinstance(subject_middle, list)
+                    else subject_middle
+                )
+
+                # Teacher: last element of next_parts
+                teacher = next_parts[-1] if next_parts else ""
+
+                # Merge into normalized list
+                merged_text = "\n".join([room, subject, teacher])
+                double = True
+                i += 2
+                merged.append({"lesson_info": merged_text, "double_lesson": double})
+                continue
+
+        # Single lesson, keep as-is
+        merged_text = "\n".join(current_parts)
+        merged.append({"lesson_info": merged_text, "double_lesson": double})
+        i += 1
+
+    return merged
+
+
+def clean_day(day):
+    cleaned = []
+    for lesson in day:
+        text = str(lesson).strip()
+        if (
+            text
+            in {
+                "L U N C H",
+                "B R E A K",
+                "S N A C K B R E A K",
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+            }
+            or not lesson
+        ):
+            continue
+        cleaned.append(lesson)
+    return cleaned
 
 
 def normalize_attributes(attributes):
@@ -98,18 +183,6 @@ def normalize_attributes(attributes):
         return [attributes[0], middle, attributes[-1]]
     else:
         return attributes
-
-
-def is_continuation(attributes):
-    if len(attributes) < 3:
-        return True
-    elif not any(char.isidigit() for char in attributes[0]):
-        return True
-    else:
-        return False
-
-
-def merge_(day): ...
 
 
 if __name__ == "__main__":
