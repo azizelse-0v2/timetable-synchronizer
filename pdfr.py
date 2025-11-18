@@ -6,7 +6,7 @@ class Grade:
     def __init__(self, sinf, tur):
         self.sinf = sinf
         self.tur = tur
-        self.target = (self.sinf - 5)*2 +(0 if self.tur=="blue" else 1)
+        self.target = (self.sinf - 5) * 2 + (0 if self.tur == "blue" else 1)
 
     def __str__(self):
         return f"{self.sinf} {self.tur}"
@@ -49,7 +49,22 @@ class Grade:
 
 def main():
     grade = Grade.get()
-    with pdfplumber.open("timetable.pdf") as pdf:
+    days = extract_pdf_info("timetable.pdf", grade)
+    output_info(days)
+
+
+def output_info(days):
+    for day_index in range(len(days)):
+        day = days[day_index]
+        for lesson_index, lesson in enumerate(
+            day, start=1
+        ):  # day = {"lesson_info":list(), "double_lesson":bool}
+            print(lesson_index, lesson["lesson_info"], lesson["double_lesson"])
+        print("---------------------------------")
+
+
+def extract_pdf_info(pathway, grade):
+    with pdfplumber.open(pathway) as pdf:
         page = pdf.pages[grade.target]
 
         table_settings = {
@@ -81,25 +96,22 @@ def main():
 
         for day_index in range(len(days)):
             day = days[day_index]
-            day = clean_day(day)
-            day = normalize_day(day)
-            day = merge_day(day)
+            day = extract_day_info(day)
             days[day_index] = day
-            for lesson_index, lesson in enumerate(
-                day, start=1
-            ):  # day = {"lesson_info":list(), "double_lesson":bool}
-                print(
-                    lesson_index,
-                    lesson["lesson_info"].split("\n"),
-                    lesson["double_lesson"],
-                )
-            print("---------------------------------")
+    return days
 
 
-def normalize_day(day):
+def extract_day_info(day):
+    day = clean_day(day)
+    day = multiline_processing(day)
+    day = merge_day(day)
+    return day
+
+
+def multiline_processing(day):
     for i in range(len(day)):
         lesson = day[i]
-        attrs = normalize_attributes(lesson.split("\n"))
+        attrs = multiline_lesson_handling(lesson.split("\n"))
         day[i] = "\n".join(attrs)
     return day
 
@@ -135,14 +147,14 @@ def merge_day(day):
                 teacher = next_parts[-1] if next_parts else ""
 
                 # Merge into normalized list
-                merged_text = "\n".join([room, subject, teacher])
+                merged_text = [room, subject, teacher]
                 double = True
                 i += 2
                 merged.append({"lesson_info": merged_text, "double_lesson": double})
                 continue
 
         # Single lesson, keep as-is
-        merged_text = "\n".join(current_parts)
+        merged_text = current_parts
         merged.append({"lesson_info": merged_text, "double_lesson": double})
         i += 1
 
@@ -155,7 +167,7 @@ def clean_day(day):
         text = str(lesson).strip()
         if (
             text
-            in {
+            in (
                 "L U N C H",
                 "B R E A K",
                 "S N A C K B R E A K",
@@ -164,7 +176,7 @@ def clean_day(day):
                 "Wednesday",
                 "Thursday",
                 "Friday",
-            }
+            )
             or not lesson
         ):
             continue
@@ -172,7 +184,7 @@ def clean_day(day):
     return cleaned
 
 
-def normalize_attributes(attributes):
+def multiline_lesson_handling(attributes):
     if len(attributes) > 3:
         attributes = [
             attribute.strip()

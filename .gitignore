@@ -1,5 +1,6 @@
 token.json
-client_secret_*.json
+credentials.json
+__pycache__/
 *.pem
 *.key
 *.env
